@@ -28,7 +28,7 @@ sound_match_end.set_volume(config["sounds"]["volume"])
 sound_match_pause.set_volume(config["sounds"]["volume"])
 
 # * Match
-match = match_manager.MatchManager()
+match = match_manager.MatchManager(config["event"]["save_directory"])
 match_start_time = None
 total_match_time = config["timing"]["auto_time_seconds"] + config["timing"]["teleop_time_seconds"]
 time_update_thread: threading.Thread = None
@@ -52,7 +52,7 @@ match_select_entry.pack(padx=5, side=tk.LEFT)
 match_select_next_button = tk.Button(match_select_frame, text=" > ")
 match_select_next_button.pack(side=tk.RIGHT)
 
-match_select_previous_button.config(command=lambda: match_select_variable.set(match_select_variable.get() - 1))
+match_select_previous_button.config(command=lambda: match_select_variable.set(match_select_variable.get() - 1 if match_select_variable.get() > 1 else 1))
 match_select_next_button.config(command=lambda: match_select_variable.set(match_select_variable.get() + 1))
 
 # * Teams
@@ -87,6 +87,29 @@ blue_alliance_team_2.bind("<Return>", lambda e: blue_alliance_team_3.focus())
 blue_alliance_team_3.bind("<Return>", lambda e: red_alliance_team_1.focus())
 red_alliance_team_1.bind("<Return>", lambda e: red_alliance_team_2.focus())
 red_alliance_team_2.bind("<Return>", lambda e: red_alliance_team_3.focus())
+red_alliance_team_3.bind("<Return>", lambda e: main_window.focus())
+red_alliance_team_3.bind("<Tab>", lambda e: main_window.focus())
+
+# * Match Setup
+def load_match():
+    match_number = match_select_variable.get()
+
+    blue_alliance_team_1.delete(0, tk.END)
+    blue_alliance_team_2.delete(0, tk.END)
+    blue_alliance_team_3.delete(0, tk.END)
+    red_alliance_team_1.delete(0, tk.END)
+    red_alliance_team_2.delete(0, tk.END)
+    red_alliance_team_3.delete(0, tk.END)
+
+    blue_alliance_team_1.insert(0, matches.at[match_number - 1, "blue_alliance_team_1"])
+    blue_alliance_team_2.insert(0, matches.at[match_number - 1, "blue_alliance_team_2"])
+    blue_alliance_team_3.insert(0, matches.at[match_number - 1, "blue_alliance_team_3"])
+    red_alliance_team_1.insert(0, matches.at[match_number - 1, "red_alliance_team_1"])
+    red_alliance_team_2.insert(0, matches.at[match_number - 1, "red_alliance_team_2"])
+    red_alliance_team_3.insert(0, matches.at[match_number - 1, "red_alliance_team_3"])
+
+match_select_variable.trace_add("write", lambda *args: load_match())
+load_match()
 
 # * Match Control
 match_control_frame = tk.LabelFrame(main_window, text="Match Control", padx=5, pady=5)
@@ -221,6 +244,22 @@ def toggle_match_results_lock():
 
 match_results_lock_button.config(command=toggle_match_results_lock)
 
+# * Save Match Results
+save_match_results_button = tk.Button(main_window, text="Save Match Results", font=("Arial", 16))
+save_match_results_button.pack(fill=tk.X, padx=5, pady=5)
+
+def save_match_results():
+    try:
+        match.save_match()
+        save_match_results_button.config(text="Match Results Saved", foreground="green")
+        save_match_results_button.after(1000, lambda: save_match_results_button.config(text="Save Match Results", foreground="black"))
+    except Exception as e:
+        save_match_results_button.config(text="Error Saving Match Results", foreground="red")
+        save_match_results_button.after(1000, lambda: save_match_results_button.config(text="Save Match Results", foreground="black"))
+
+save_match_results_button.config(command=save_match_results)
+
+
 # * Functions
 def update_scores():
     blue_alliance_score.config(text=str(match.blue_alliance_get_total_score()))
@@ -241,7 +280,7 @@ def match_start():
     global match_start_time
     match_start_time = time.time()
 
-    match.start_match()
+    match.start_match_with_match_number(match_select_variable.get())
 
     def time_update():
         global played_teleop_sound

@@ -8,3 +8,5 @@ volume = 1
 
 [event]
 matches_file = "./matches.csv"
+save_directory = "./matches_results"
+
