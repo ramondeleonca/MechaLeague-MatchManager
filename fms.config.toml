@@ -1,0 +1,4 @@
+[timing]
+auto_time_seconds = 30
+teleop_time_seconds = 270
+endgame_time_seconds = 20
