@@ -38,12 +38,13 @@ class PrepatecScoresScreen(ScoresScreen):
     # Match name 
     match_name_label: tk.Label
 
-    def __init__(self, master=None, image_path = "./res/images/scores_screen_prepatec.png"):
+    def __init__(self, master=None, image_path = "./res/images/scores_screen_prepatec.png", icon_path="./res/images/APPICON.ico"):
         self.window = tk.Toplevel(master)
         self.window.title("MechaLeague Match Manager PrepaTec Scores Screen")
         self.window.configure(bg="#00FF00")
         self.window.resizable(False, False)
         self.window.protocol("WM_DELETE_WINDOW", lambda: None)
+        self.window.iconbitmap(icon_path)
 
         self.image = ImageTk.PhotoImage(Image.open(image_path))
         self.image_label = tk.Label(self.window, image=self.image, background="#00FF00")

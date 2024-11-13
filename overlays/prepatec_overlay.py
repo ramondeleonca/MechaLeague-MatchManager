@@ -30,12 +30,13 @@ class PrepatecOverlay(Overlay):
     # Match name
     match_name_label: tk.Label
 
-    def __init__(self, master=None, image_path="./res/images/overlay_prepatec.png"):
+    def __init__(self, master=None, image_path="./res/images/overlay_prepatec.png", icon_path="./res/images/APPICON.ico"):
         self.window = tk.Toplevel(master)
         self.window.title("MechaLeague Match Manager PrepaTec Overlay")
         self.window.configure(bg="#00FF00")
         self.window.resizable(False, False)
         self.window.protocol("WM_DELETE_WINDOW", lambda: None)
+        self.window.iconbitmap(icon_path)
 
         self.overlay_image = ImageTk.PhotoImage(Image.open(image_path))
         self.overlay_label = tk.Label(self.window, image=self.overlay_image, background="#00FF00")

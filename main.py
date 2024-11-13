@@ -73,20 +73,21 @@ main_window = tk.Tk()
 main_window.title("MechaLeague Match Manager")
 main_window.attributes('-topmost', True)
 main_window.resizable(False, False)
+main_window.iconbitmap(os.path.join(dirname, "./res/images/APPICON.ico"))
 
 # * Overlay
 try:
     pyi_splash.update_text("Starting overlay")
 except:
     pass
-overlay_window = PrepatecOverlay(main_window, os.path.join(dirname, "./res/images/overlay_prepatec.png"))
+overlay_window = PrepatecOverlay(main_window, os.path.join(dirname, "./res/images/overlay_prepatec.png"), os.path.join(dirname, "./res/images/APPICON.ico"))
 
 # * Scores Screen
 try:
     pyi_splash.update_text("Starting scores screen")
 except:
     pass
-scores_screen_window = PrepatecScoresScreen(main_window, os.path.join(dirname, "./res/images/scores_screen_prepatec.png"))
+scores_screen_window = PrepatecScoresScreen(main_window, os.path.join(dirname, "./res/images/scores_screen_prepatec.png"), os.path.join(dirname, "./res/images/APPICON.ico"))
 
 # * Match select
 match_select_frame = tk.LabelFrame(main_window, text="Match Number", padx=5, pady=5)
