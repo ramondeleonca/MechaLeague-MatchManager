@@ -25,7 +25,7 @@ class MatchManager:
     match_active: bool = False
     locked: bool = True
 
-    update_callback: Callable
+    update_callback: Callable = None
 
     save_directory: str
 
@@ -39,6 +39,23 @@ class MatchManager:
         self.blue_alliance_team_1 = team_1
         self.blue_alliance_team_2 = team_2
         self.blue_alliance_team_3 = team_3    
+        if self.update_callback is not None:
+            self.update_callback()
+
+    def set_blue_alliance_team_1(self, team_1: int):
+        self.blue_alliance_team_1 = team_1
+        if self.update_callback is not None:
+            self.update_callback()
+
+    def set_blue_alliance_team_2(self, team_2: int):
+        self.blue_alliance_team_2 = team_2
+        if self.update_callback is not None:
+            self.update_callback()
+    
+    def set_blue_alliance_team_3(self, team_3: int):
+        self.blue_alliance_team_3 = team_3
+        if self.update_callback is not None:
+            self.update_callback()
     
     def blue_alliance_goal_add(self):
         if (self.match_active or not self.locked):
@@ -87,6 +104,23 @@ class MatchManager:
         self.red_alliance_team_1 = team_1
         self.red_alliance_team_2 = team_2
         self.red_alliance_team_3 = team_3
+        if self.update_callback is not None:
+            self.update_callback()
+
+    def set_red_alliance_team_1(self, team_1: int):
+        self.red_alliance_team_1 = team_1
+        if self.update_callback is not None:
+            self.update_callback()
+
+    def set_red_alliance_team_2(self, team_2: int):
+        self.red_alliance_team_2 = team_2
+        if self.update_callback is not None:
+            self.update_callback()
+    
+    def set_red_alliance_team_3(self, team_3: int):
+        self.red_alliance_team_3 = team_3
+        if self.update_callback is not None:
+            self.update_callback()
 
     def red_alliance_goal_add(self):
         if (self.match_active or not self.locked):

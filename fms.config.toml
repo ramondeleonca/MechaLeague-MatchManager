@@ -7,6 +7,6 @@ endgame_time_seconds = 30
 volume = 1
 
 [event]
-matches_file = "./matches.csv"
+matches_file = "./practive_matches_day_3.csv"
 save_directory = "./matches_results"
 
