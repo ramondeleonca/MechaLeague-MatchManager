@@ -14,3 +14,9 @@ class Overlay():
     def set_timer_text(self, text: str):
         pass
 
+    def set_event_name(self, event_name: str):
+        pass
+
+    def set_match_name(self, match_name: str):
+        pass
+

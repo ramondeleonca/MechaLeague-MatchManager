@@ -24,6 +24,12 @@ class PrepatecOverlay(Overlay):
     # Match info
     timer_label: tk.Label
 
+    # Event name
+    event_name_label: tk.Label
+
+    # Match name
+    match_name_label: tk.Label
+
     def __init__(self, master=None, image_path="./res/images/overlay_prepatec.png"):
         self.window = tk.Toplevel(master)
         self.window.title("MechaLeague Match Manager PrepaTec Overlay")
@@ -66,6 +72,14 @@ class PrepatecOverlay(Overlay):
         self.red_alliance_score_label = tk.Label(self.window, text="00", font=("Arial", 48), background="#fd0304", fg="#fff")
         self.red_alliance_score_label.place(x=750, y=890 + 40, anchor=tk.CENTER)
 
+        # Event name
+        self.event_name_label = tk.Label(self.window, text="MechaLeague Prepatec", font=("IMPACT", 16), background="#474745", fg="#fff")
+        self.event_name_label.place(x=340, y=1022, anchor=tk.W)
+
+        # Match name
+        self.match_name_label = tk.Label(self.window, text="Qualification Match 99", font=("IMPACT", 16), background="#474745", fg="#fff")
+        self.match_name_label.place(x=1578, y=1022, anchor=tk.E)
+
     def set_timer_text(self, text: str):
         self.timer_label.config(text=text)
 
@@ -84,5 +98,11 @@ class PrepatecOverlay(Overlay):
 
     def set_red_alliance_goals(self, goals: int):
         self.red_alliance_score_label.configure(text=str(goals))
+
+    def set_event_name(self, event_name: str):
+        self.event_name_label.configure(text=event_name)
+
+    def set_match_name(self, match_name: str):
+        self.match_name_label.configure(text=match_name)
 
     

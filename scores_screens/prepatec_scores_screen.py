@@ -32,6 +32,12 @@ class PrepatecScoresScreen(ScoresScreen):
 
     red_alliance_total_score: int
 
+    # Event name
+    event_name_label: tk.Label
+
+    # Match name 
+    match_name_label: tk.Label
+
     def __init__(self, master=None, image_path = "./res/images/scores_screen_prepatec.png"):
         self.window = tk.Toplevel(master)
         self.window.title("MechaLeague Match Manager PrepaTec Scores Screen")
@@ -83,6 +89,14 @@ class PrepatecScoresScreen(ScoresScreen):
 
         self.red_alliance_score_label = tk.Label(self.window, text="00", font=("Arial", 60), background="#fe0000", fg="#fff")
         self.red_alliance_score_label.place(x=535, y=295, anchor=tk.CENTER)
+
+        # Event name
+        self.event_name_label = tk.Label(self.window, text="MechaLeague Prepatec", font=("IMPACT", 16), background="#474745", fg="#fff")
+        self.event_name_label.place(x=420, y=655, anchor=tk.W)
+
+        # Match name
+        self.match_name_label = tk.Label(self.window, text="Qualification Match 99", font=("IMPACT", 16), background="#474745", fg="#fff")
+        self.match_name_label.place(x=1185, y=655, anchor=tk.E)
     
     def set_blue_alliance_teams(self, team_1: int, team_2: int, team_3: int):
         self.blue_alliance_team_1_label.configure(text=str(team_1))

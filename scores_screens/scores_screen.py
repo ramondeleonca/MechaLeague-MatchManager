@@ -23,3 +23,9 @@ class ScoresScreen:
     def set_red_alliance_total_score(self, score: int):
         pass
 
+    def set_event_name(self, event_name: str):
+        pass
+
+    def set_match_name(self, match_name: str):
+        pass
+

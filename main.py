@@ -22,19 +22,25 @@ elif __file__:
     dirname = os.path.dirname(__file__)
 
 # * Config
-if pyi_splash:
+try:
     pyi_splash.update_text("Loading Config from fms.config.toml")
+except:
+    pass
 with open("./fms.config.toml", "r") as config_file:
     config = toml.loads(config_file.read())
 
 # * Matches
-if pyi_splash:
+try:
     pyi_splash.update_text("Loading Matches from " + config["event"]["matches_file"])
+except:
+    pass
 matches = pd.read_csv(config["event"]["matches_file"])
 
 # * Sounds
-if pyi_splash:
+try:
     pyi_splash.update_text("Loading Sounds")
+except:
+    pass
 pygame.mixer.init()
 sound_auto_start = pygame.mixer.Sound(os.path.join(dirname, "./res/sounds/Start Auto_normalized.wav"))
 sound_teleop_start = pygame.mixer.Sound(os.path.join(dirname, "./res/sounds/Start Teleop_normalized.wav"))
@@ -49,29 +55,37 @@ sound_match_end.set_volume(config["sounds"]["volume"])
 sound_match_pause.set_volume(config["sounds"]["volume"])
 
 # * Match
-if pyi_splash:
+try:
     pyi_splash.update_text("Starting Match Manager")
+except:
+    pass
 match = match_manager.MatchManager(config["event"]["save_directory"])
 match_start_time = None
 total_match_time = config["timing"]["auto_time_seconds"] + config["timing"]["teleop_time_seconds"]
 time_update_thread: threading.Thread = None
 
 # * Main Window
-if pyi_splash:
+try:
     pyi_splash.update_text("Starting Main Window")
+except:
+    pass
 main_window = tk.Tk()
 main_window.title("MechaLeague Match Manager")
 main_window.attributes('-topmost', True)
 main_window.resizable(False, False)
 
 # * Overlay
-if pyi_splash:
+try:
     pyi_splash.update_text("Starting overlay")
+except:
+    pass
 overlay_window = PrepatecOverlay(main_window, os.path.join(dirname, "./res/images/overlay_prepatec.png"))
 
 # * Scores Screen
-if pyi_splash:
+try:
     pyi_splash.update_text("Starting scores screen")
+except:
+    pass
 scores_screen_window = PrepatecScoresScreen(main_window, os.path.join(dirname, "./res/images/scores_screen_prepatec.png"))
 
 # * Match select
@@ -84,6 +98,7 @@ match_select_previous_button.pack(side=tk.LEFT)
 match_select_variable = tk.IntVar(match_select_frame, value=1)
 match_select_entry = tk.Entry(match_select_frame, width=5, textvariable=match_select_variable)
 match_select_entry.pack(padx=5, side=tk.LEFT)
+match_select_variable.trace_add("write", lambda *args: match_select_variable.set(1) if match_select_variable.get() < 1 else None)
 
 match_select_next_button = tk.Button(match_select_frame, text=" > ")
 match_select_next_button.pack(side=tk.RIGHT)
@@ -146,8 +161,10 @@ blue_alliance_team_2_variable.trace_add("write", lambda *args: match.set_blue_al
 blue_alliance_team_3_variable.trace_add("write", lambda *args: match.set_blue_alliance_team_3(blue_alliance_team_3_variable.get()))
 
 # * Match Setup
-if pyi_splash:
+try:
     pyi_splash.update_text("Loading initial match")
+except:
+    pass
 def load_match():
     match_number = match_select_variable.get()
 
@@ -347,6 +364,8 @@ def update_screens():
     overlay_window.set_blue_alliance_goals(match.blue_alliance_get_total_score())
     overlay_window.set_red_alliance_goals(match.red_alliance_get_total_score())
 
+    overlay_window.set_event_name(config["event"]["event_name"])
+
     # Update Scores Screen
     scores_screen_window.set_blue_alliance_teams(match.blue_alliance_team_1, match.blue_alliance_team_2, match.blue_alliance_team_3)
     scores_screen_window.set_red_alliance_teams(match.red_alliance_team_1, match.red_alliance_team_2, match.red_alliance_team_3)
@@ -360,8 +379,21 @@ def update_screens():
     scores_screen_window.set_blue_alliance_total_score(match.blue_alliance_get_total_score())
     scores_screen_window.set_red_alliance_total_score(match.red_alliance_get_total_score())
 
-if pyi_splash:
+    # Update Match names
+    match_number = match_select_variable.get()
+    try:
+        match_type = matches.at[match_number - 1, "match_type"]
+    except:
+        match_type = "Match"
+    
+    overlay_window.set_match_name(match_type + " " + str(match_number))
+    scores_screen_window.set_match_name(match_type + " " + str(match_number))
+
+
+try:
     pyi_splash.update_text("Updating screens")
+except:
+    pass
 update_screens()
 match.set_update_callback(update_screens)
 
@@ -434,8 +466,10 @@ pause_match_button.config(command=match_pause)
 end_match_button.config(command=match_stop)
 
 if __name__ == "__main__":
-    if pyi_splash:
+    try:
         pyi_splash.update_text("Done, enjoy the competition!")
         time.sleep(0.1)
         pyi_splash.close()
+    except:
+        pass
     main_window.mainloop()
