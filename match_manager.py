@@ -172,40 +172,60 @@ class MatchManager:
     def start_match(self):
         self.match_active = True
         self.reset_all()
+        if self.update_callback is not None:
+            self.update_callback()
 
     def start_match_with_match_number(self, match_number: int):
         self.match_number = match_number
         self.start_match()
+        if self.update_callback is not None:
+            self.update_callback()
 
     def resume_match(self):
+        if self.update_callback is not None:
+            self.update_callback()
         self.match_active = True
 
     def end_match(self):
+        if self.update_callback is not None:
+            self.update_callback()
         self.match_active = False
 
     def set_match_active(self, active: bool):
+        if self.update_callback is not None:
+            self.update_callback()
         self.match_active = active
 
     def is_match_active(self):
         return self.match_active
     
     def set_locked(self, locked: bool):
+        if self.update_callback is not None:
+            self.update_callback()
         self.locked = locked
 
     def is_locked(self):
+        if self.update_callback is not None:
+            self.update_callback()
         return self.locked
     
     def lock(self):
         self.locked = True
+        if self.update_callback is not None:
+            self.update_callback()
 
     def unlock(self):
         self.locked = False
+        if self.update_callback is not None:
+            self.update_callback()
 
     def set_update_callback(self, callback: Callable):
         self.update_callback = callback
 
     def set_match_number(self, match_number: int):
         self.match_number = match_number
+        if self.update_callback is not None:
+            self.update_callback()
 
     def save_match(self):
         match_data = {

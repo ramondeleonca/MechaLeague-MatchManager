@@ -7,6 +7,10 @@ import threading
 import pandas as pd
 import sys
 import os
+import utils
+import launchpad_constants
+import launchpad_py
+import launchpad_wrapper
 from scores_screens.prepatec_scores_screen import PrepatecScoresScreen
 from overlays.prepatec_overlay import PrepatecOverlay
 
@@ -41,6 +45,7 @@ try:
     pyi_splash.update_text("Loading Sounds")
 except:
     pass
+
 pygame.mixer.init()
 sound_auto_start = pygame.mixer.Sound(os.path.join(dirname, "./res/sounds/Start Auto_normalized.wav"))
 sound_teleop_start = pygame.mixer.Sound(os.path.join(dirname, "./res/sounds/Start Teleop_normalized.wav"))
@@ -74,6 +79,36 @@ main_window.title("MechaLeague Match Manager")
 main_window.attributes('-topmost', True)
 main_window.resizable(False, False)
 main_window.iconbitmap(os.path.join(dirname, "./res/images/APPICON.ico"))
+
+# * Launchpad integration
+try:
+    pyi_splash.update_text("Starting Launchpad Integration")
+except:
+    pass
+
+lp: launchpad_py.LaunchpadMk2 = None
+lp_wapper: launchpad_wrapper.LaunchpadWrapper = None
+try: 
+    lp = launchpad_py.LaunchpadMk2()
+    lp_wapper = launchpad_wrapper.LaunchpadWrapper(lp)
+    lp.Open()
+    lp.LedAllOn(0)
+
+    def launchpad_start():
+        lp.LedCtrlPulseXYByCode(8, 1, 46)
+        lp.LedCtrlXYByCode(*launchpad_constants.START_MATCH_PAD, 23)
+    launchpad_start()
+
+    def launchpad_loop():
+        lp_wapper.update()
+        main_window.after(100, launchpad_loop)
+    launchpad_loop()
+
+    @lp_wapper.on_button_press(*launchpad_constants.START_MATCH_PAD)
+    def launchpad_start_match():
+        match_start()
+except:
+    pass
 
 # * Overlay
 try:
@@ -390,6 +425,17 @@ def update_screens():
     overlay_window.set_match_name(match_type + " " + str(match_number))
     scores_screen_window.set_match_name(match_type + " " + str(match_number))
 
+    if lp is not None:
+        try:
+            if match.is_match_active():
+                lp.LedCtrlPulseXYByCode(*launchpad_constants.STATUS_PAD, 23)
+            else:
+                lp.LedCtrlXYByCode(*launchpad_constants.STATUS_PAD, 66)
+        except:
+            pass
+
+        
+
 
 try:
     pyi_splash.update_text("Updating screens")
@@ -402,6 +448,9 @@ teleop_sound_callback_id: int
 endgame_sound_callback_id: int
 end_match_sound_callback_id: int
 def match_start():
+    if match.is_match_active():
+        return
+
     sound_auto_start.play()
 
     global match_start_time
@@ -415,13 +464,21 @@ def match_start():
     end_match_sound_callback_id = main_window.after((config["timing"]["auto_time_seconds"] + config["timing"]["teleop_time_seconds"]) * 1000, lambda: sound_match_end.play())
 
     def time_update():
-        global played_teleop_sound
-        global played_endgame_sound
-
         while match.is_match_active():
             # timekeeping
             elapsed_time = time.time() - match_start_time
             match_time = total_match_time - elapsed_time
+
+            if lp is not None:
+                match_time_percentage = match_time / total_match_time
+                try:
+                    for i in range(8):
+                        if i < match_time_percentage * 8:
+                            lp.LedCtrlXYByCode(i, 8, 23)
+                        else:
+                            lp.LedCtrlXYByCode(i, 8, 0)
+                except:
+                    pass
 
             # Update timers
             match_control_timer_label.config(text=time.strftime("%M:%S", time.gmtime(match_time)))
@@ -474,3 +531,6 @@ if __name__ == "__main__":
     except:
         pass
     main_window.mainloop()
+    if lp is not None:
+        lp.LedAllOn(0)
+        lp.Close()
