@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MechaLeague MMS - Scoring</title>
+
+    <style>
+        /* HTML: <div class="loader"></div> */
+        .loader {
+        width: 10px;
+        padding: 8px;
+        aspect-ratio: 1;
+        margin: 10px;
+        border-radius: 50%;
+        background: #fff;
+        --_m: 
+            conic-gradient(#0000 1%,#000),
+            linear-gradient(#000 0 0) content-box;
+        -webkit-mask: var(--_m);
+                mask: var(--_m);
+        -webkit-mask-composite: source-out;
+                mask-composite: subtract;
+        animation: l3 1s infinite linear;
+        }
+        @keyframes l3 {to{transform: rotate(1turn)}}
+
+        @keyframes blink {
+            0%, 49% {
+                opacity: 0;
+            }
+            50%, 100% {
+                opacity: 1;
+            }
+        }
+
+        /* * {
+            outline: 1px solid red;
+        } */
+
+        * {
+            font-family: 'Arial', sans-serif;
+        }
+
+        .selected-alliance {
+            width: 60%;
+        }
+
+        .blue-alliance-controls > * > * {
+            background-color: blue !important;
+        }
+
+        .red-alliance-controls > * > * {
+            background-color: red !important;
+        }
+
+        button {
+            transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+        }
+
+        button:active {
+            transform: scale(0.9) !important;
+        }
+    </style>
+
+    <script src="/static/node_modules/socket.io-client/dist/socket.io.js"></script>
+    <script defer src="/static/scoring.js"></script>
+</head>
+<body style="background-color: #16160b; height: 100vh; margin: 0; display: flex; flex-direction: column;">
+    <!-- Wait for match -->
+    <div class="no-match" style="position: absolute; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.5); z-index: 100; display: flex; align-items: center; justify-content: center; transition: opacity 0.5s; pointer-events: all;">
+        <p style="color: white;">Waiting for next match to start...</p>
+        <div class="loader"></div> 
+    </div>
+
+    <!-- Header -->
+    <div style="width: 100%; height: 100px; display: flex; position: relative;">
+        <div style="background-color: red; height: 100%; flex-grow: 1; display: flex; align-items: center; justify-content: start;" class="red-alliance">
+            <h1 style="color: white; font-size: 3rem; margin-left: 15px;" class="red-alliance-total-score">0</h1>
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-left: 10px;">
+                <h3 style="line-height: 1; margin: 5px; color: white; font-weight: 600;">Goals: <span class="red-alliance-goals">0</span></h3>
+                <h3 style="line-height: 1; margin: 5px; color: white; font-weight: 600;">Fouls: <span class="red-alliance-fouls">0</span></h3>
+            </div>
+        </div>
+
+        <div style="background-color: white; height: 100%; width: fit-content; display: flex; align-items: center; justify-content: center; padding-left: 10px; padding-right: 10px;">
+            <h1 style="font-size: 3rem;" class="timer">00:00</h1>
+        </div>
+
+        <div style="background-color: blue; height: 100%; flex-grow: 1; display: flex; align-items: center; justify-content: end;" class="blue-alliance">
+            <h1 style="color: white; font-size: 3rem;" class="blue-alliance-total-score">0</h1>
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-left: 10px; margin-right: 15px;">
+                <h3 style="line-height: 1; margin: 5px; color: white; font-weight: 600;">Goals: <span class="blue-alliance-goals">0</span></h3>
+                <h3 style="line-height: 1; margin: 5px; color: white; font-weight: 600;">Fouls: <span class="blue-alliance-fouls">0</span></h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div style="display: flex; position: relative; flex-grow: 1;" class="controls">
+        <div style="width: 50%; height: 100%;">
+            <button style="all: unset; width: 100%; height: 60%; display: block; background-color: darkslateblue; color: white; font-size: 4rem; text-align: center; border: 2px solid white; box-sizing: border-box;" onclick="addGoal();">ADD GOAL</button>
+            <button style="all: unset; width: 100%; height: 40%; display: block; background-color: darkslateblue; color: white; font-size: 4rem; text-align: center; border: 2px solid white; box-sizing: border-box;" onclick="subGoal()">SUB GOAL</button>
+        </div>
+
+        <div style="width: 50%; height: 100%;">
+            <button style="all: unset; width: 100%; height: 60%; display: block; background-color: darkslateblue; color: white; font-size: 4rem; text-align: center; border: 2px solid white; box-sizing: border-box;" onclick="addFoul();">ADD FOUL</button>
+            <button style="all: unset; width: 100%; height: 40%; display: block; background-color: darkslateblue; color: white; font-size: 4rem; text-align: center; border: 2px solid white; box-sizing: border-box;" onclick="subFoul();">SUB FOUL</button>
+        </div>
+    </div>
+
+    <p style="position: absolute; bottom: 0px; left: 0px; color: white; z-index: 1000; pointer-events: none; font-size: small;">MechaLeague MMS V{{version}}, build {{build}}</p>
+</body>
+</html>

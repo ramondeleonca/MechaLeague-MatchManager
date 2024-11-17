@@ -1,5 +1,8 @@
+[fms]
+remote_control = false
+
 [timing]
-auto_time_seconds = 30
+auto_time_seconds = 0
 teleop_time_seconds = 100
 endgame_time_seconds = 15
 

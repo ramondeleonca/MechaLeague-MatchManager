@@ -205,8 +205,6 @@ class MatchManager:
         self.locked = locked
 
     def is_locked(self):
-        if self.update_callback is not None:
-            self.update_callback()
         return self.locked
     
     def lock(self):

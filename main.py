@@ -7,10 +7,13 @@ import threading
 import pandas as pd
 import sys
 import os
-import utils
+import flask
+import eventlet
+import flask_socketio
 import launchpad_constants
 import launchpad_py
 import launchpad_wrapper
+from flask_cors import CORS
 from scores_screens.prepatec_scores_screen import PrepatecScoresScreen
 from overlays.prepatec_overlay import PrepatecOverlay
 
@@ -20,10 +23,20 @@ try:
 except:
     pass
 
+# * Paths
 if getattr(sys, 'frozen', False):
+    FROZEN = True
     dirname = getattr(sys, "_MEIPASS")
 elif __file__:
+    FROZEN = False
     dirname = os.path.dirname(__file__)
+
+# * Read version and build
+with open(os.path.join(dirname, "version.txt"), "r") as version_file:
+    version = version_file.read().strip()
+
+with open(os.path.join(dirname, "build.txt"), "r") as build_file:
+    build = build_file.read().strip()
 
 # * Config
 try:
@@ -59,7 +72,7 @@ sound_endgame_start.set_volume(config["sounds"]["volume"])
 sound_match_end.set_volume(config["sounds"]["volume"])
 sound_match_pause.set_volume(config["sounds"]["volume"])
 
-# * Match
+# * Match Manager
 try:
     pyi_splash.update_text("Starting Match Manager")
 except:
@@ -68,6 +81,65 @@ match = match_manager.MatchManager(config["event"]["save_directory"])
 match_start_time = None
 total_match_time = config["timing"]["auto_time_seconds"] + config["timing"]["teleop_time_seconds"]
 time_update_thread: threading.Thread = None
+
+# * Servers
+SERVER_PORT = 80
+rest = flask.Flask(__name__, static_folder=os.path.join(dirname, "./res/static"), template_folder=os.path.join(dirname, "./res/templates"))
+CORS(rest)
+socket = flask_socketio.SocketIO(rest, async_mode="threading")
+server_thread: threading.Thread = None
+
+# * Server routes
+@rest.route("/")
+def index_page():
+    return flask.render_template("index.html", version=version, build=build)
+
+@rest.route("/scoring")
+def scoring_page():
+    return flask.render_template("scoring.html", version=version, build=build)
+
+# * Socket events
+@socket.on("connect")
+def on_connect():
+    print("Referee board connected")
+
+@socket.on("disconnect")
+def on_disconnect():
+    print("Referee board disconnected")
+
+@socket.on('message')
+def handle_message(message):
+    print(f"Message received: {message}")
+    # Emit a response
+    socket.emit('response', f"Server received: {message}")
+
+@socket.on("add_goal")
+def add_goal(data):
+    if data["alliance"] == "red":
+        match.red_alliance_goal_add()
+    elif data["alliance"] == "blue":
+        match.blue_alliance_goal_add()
+
+@socket.on("sub_goal")
+def sub_goal(data):
+    if data["alliance"] == "red":
+        match.red_alliance_goal_sub()
+    elif data["alliance"] == "blue":
+        match.blue_alliance_goal_sub()
+
+@socket.on("add_foul")
+def add_foul(data):
+    if data["alliance"] == "red":
+        match.red_alliance_foul_add()
+    elif data["alliance"] == "blue":
+        match.blue_alliance_foul_add()
+
+@socket.on("sub_foul")
+def sub_foul(data):
+    if data["alliance"] == "red":
+        match.red_alliance_foul_sub()
+    elif data["alliance"] == "blue":
+        match.blue_alliance_foul_sub()
 
 # * Main Window
 try:
@@ -434,8 +506,28 @@ def update_screens():
         except:
             pass
 
-        
+    socket.emit("update", {
+        "red_alliance_team_1": match.red_alliance_team_1,
+        "red_alliance_team_2": match.red_alliance_team_2,
+        "red_alliance_team_3": match.red_alliance_team_3,
 
+        "blue_alliance_team_1": match.blue_alliance_team_1,
+        "blue_alliance_team_2": match.blue_alliance_team_2,
+        "blue_alliance_team_3": match.blue_alliance_team_3,
+
+        "red_alliance_total_score": match.red_alliance_get_total_score(),
+        "red_alliance_goals": match.red_alliance_get_goals(),
+        "red_alliance_fouls": match.red_alliance_get_own_fouls(),
+
+        "blue_alliance_total_score": match.blue_alliance_get_total_score(),
+        "blue_alliance_goals": match.blue_alliance_get_goals(),
+        "blue_alliance_fouls": match.blue_alliance_get_own_fouls(),
+
+        "match_number": match_select_variable.get(),
+
+        "match_active": match.is_match_active(),
+        "match_locked": match.is_locked()
+    })
 
 try:
     pyi_splash.update_text("Updating screens")
@@ -458,11 +550,24 @@ def match_start():
 
     match.start_match_with_match_number(match_select_variable.get())
 
+    socket.emit("match_start", {
+        "red_alliance_team_1": match.red_alliance_team_1,
+        "red_alliance_team_2": match.red_alliance_team_2,
+        "red_alliance_team_3": match.red_alliance_team_3,
+
+        "blue_alliance_team_1": match.blue_alliance_team_1,
+        "blue_alliance_team_2": match.blue_alliance_team_2,
+        "blue_alliance_team_3": match.blue_alliance_team_3,
+
+        "match_number": match_select_variable.get()
+    })
+
     global teleop_sound_callback_id, endgame_sound_callback_id, end_match_sound_callback_id
     teleop_sound_callback_id = main_window.after((config["timing"]["auto_time_seconds"]) * 1000, lambda: sound_teleop_start.play())
     endgame_sound_callback_id = main_window.after((config["timing"]["auto_time_seconds"] + config["timing"]["teleop_time_seconds"] - config["timing"]["endgame_time_seconds"]) * 1000, lambda: sound_endgame_start.play())
     end_match_sound_callback_id = main_window.after((config["timing"]["auto_time_seconds"] + config["timing"]["teleop_time_seconds"]) * 1000, lambda: sound_match_end.play())
 
+    # TODO: Change this to a .after call on main_window
     def time_update():
         while match.is_match_active():
             # timekeeping
@@ -481,8 +586,10 @@ def match_start():
                     pass
 
             # Update timers
-            match_control_timer_label.config(text=time.strftime("%M:%S", time.gmtime(match_time)))
-            overlay_window.set_timer_text(time.strftime("%M:%S", time.gmtime(match_time)))
+            match_time_str = time.strftime("%M:%S", time.gmtime(match_time))
+            match_control_timer_label.config(text=match_time_str)
+            overlay_window.set_timer_text(match_time_str)
+            socket.emit("match_time", {"match_time": match_time_str})
 
             # Check if match is over
             if match_time <= 0:
@@ -490,9 +597,10 @@ def match_start():
                 sound_match_end.play()
                 match_control_timer_label.config(text="00:00")
                 overlay_window.set_timer_text("00:00")
+                socket.emit("match_time", {"match_time": "00:00"})
                 break
 
-            time.sleep(0.1)
+            time.sleep(0.25)
     
     global time_update_thread
     time_update_thread = threading.Thread(target=time_update)
@@ -500,7 +608,7 @@ def match_start():
 
 start_match_button.config(command=match_start)
 
-def stop_match():
+def end_match():
     match.end_match()
 
     main_window.after_cancel(teleop_sound_callback_id)
@@ -510,18 +618,37 @@ def stop_match():
     global time_update_thread
     time_update_thread.join()
 
+    socket.emit("match_end", {
+        "red_alliance_goals": match.red_alliance_get_goals(),
+        "red_alliance_fouls": match.red_alliance_get_own_fouls(),
+
+        "blue_alliance_goals": match.blue_alliance_get_goals(),
+        "blue_alliance_fouls": match.blue_alliance_get_own_fouls(),
+
+        "match_number": match_select_variable.get()
+    })
+
+    match_control_timer_label.config(text="00:00")
+    overlay_window.set_timer_text("00:00")
+    socket.emit("match_time", {"match_time": "00:00"})
+
 def match_pause():
     if match.is_match_active():
-        stop_match()
+        end_match()
         sound_match_pause.play()
+        socket.emit("match_pause", {})
 
 def match_stop():
     if match.is_match_active():
-        stop_match()
+        end_match()
         sound_match_end.play()
+        socket.emit("match_stop", {})
 
 pause_match_button.config(command=match_pause)
 end_match_button.config(command=match_stop)
+
+def start_servers():
+    socket.run(rest, host="0.0.0.0", port=SERVER_PORT)
 
 if __name__ == "__main__":
     try:
@@ -530,7 +657,16 @@ if __name__ == "__main__":
         pyi_splash.close()
     except:
         pass
+    if config["fms"]["remote_control"]:
+        server_thread = threading.Thread(target=start_servers, daemon=True)
+        server_thread.start()
     main_window.mainloop()
+    try:
+        socket.stop()
+    except:
+        pass
+    if server_thread is not None:
+        server_thread.join()
     if lp is not None:
         lp.LedAllOn(0)
         lp.Close()
