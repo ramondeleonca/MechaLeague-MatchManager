@@ -92,7 +92,7 @@ class PrepatecScoresScreen(ScoresScreen):
         self.red_alliance_score_label.place(x=535, y=295, anchor=tk.CENTER)
 
         # Event name
-        self.event_name_label = tk.Label(self.window, text="MechaLeague Prepatec", font=("IMPACT", 16), background="#474745", fg="#fff")
+        self.event_name_label = tk.Label(self.window, text="MechaLeague Event", font=("IMPACT", 16), background="#474745", fg="#fff")
         self.event_name_label.place(x=420, y=655, anchor=tk.W)
 
         # Match name
@@ -124,10 +124,12 @@ class PrepatecScoresScreen(ScoresScreen):
     def set_blue_alliance_total_score(self, score: int):
         self.blue_alliance_total_score = score
         self.blue_alliance_score_label.configure(text=str(score))
+        # self.__update_winning_text__()
 
     def set_red_alliance_total_score(self, score: int):
         self.red_alliance_total_score = score
         self.red_alliance_score_label.configure(text=str(score))
+        # self.__update_winning_text__()
 
     def __update_winning_text__(self):
         if self.red_alliance_total_score > self.blue_alliance_total_score:
@@ -137,4 +139,10 @@ class PrepatecScoresScreen(ScoresScreen):
         else:
             self.red_alliance_score_label.configure(font=("Arial", 60))
             self.blue_alliance_score_label.configure(font=("Arial", 60))
+
     
+    def set_event_name(self, event_name: str):
+        self.event_name_label.configure(text=event_name)
+
+    def set_match_name(self, match_name: str):
+        self.match_name_label.configure(text=match_name)

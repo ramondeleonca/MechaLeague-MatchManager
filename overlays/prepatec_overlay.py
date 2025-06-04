@@ -64,7 +64,7 @@ class PrepatecOverlay(Overlay):
 
         # Timer label
         self.timer_label = tk.Label(self.window, text="00:00", font=("Arial", 48), background="#FFFFFF", fg="#000000")
-        self.timer_label.place(x=876, y=907)
+        self.timer_label.place(x=876, y=902)
 
         # Score labels
         self.blue_alliance_score_label = tk.Label(self.window, text="00", font=("Arial", 48), background="#0101fb", fg="#fff")
