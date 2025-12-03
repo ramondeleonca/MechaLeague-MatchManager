@@ -1,5 +1,5 @@
 [fms]
-remote_control = false
+remote_control = true
 
 [timing]
 auto_time_seconds = 0
@@ -10,7 +10,7 @@ endgame_time_seconds = 15
 volume = 1
 
 [event]
-event_name = "MechaLeague Invitational"
-matches_file = "./practive_matches_day_3.csv"
+event_name = "ECOINGENIA 2025"
+matches_file = "./ecoingenia_matches.csv"
 save_directory = "./matches_results"
 

@@ -3,15 +3,18 @@ import pygame.mixer
 import toml
 import match_manager
 import time
+import flask
+import eventlet
+import flask_socketio
+from flask_cors import CORS
 import threading
 import pandas as pd
 import sys
 import os
-import launchpad_constants
-import launchpad_py
-import launchpad_wrapper
 from scores_screens.prepatec_scores_screen import PrepatecScoresScreen
 from overlays.prepatec_overlay import PrepatecOverlay
+from scores_screens.itesm_scores_screen import ITESMScoresScreen
+from overlays.itesm_overlay import ITESMOverlay
 
 try:
     import pyi_splash
@@ -48,6 +51,7 @@ try:
 except:
     pass
 matches = pd.read_csv(config["event"]["matches_file"])
+print("Loaded matches:", len(matches))
 
 # * Sounds
 try:
@@ -67,6 +71,65 @@ sound_teleop_start.set_volume(config["sounds"]["volume"])
 sound_endgame_start.set_volume(config["sounds"]["volume"])
 sound_match_end.set_volume(config["sounds"]["volume"])
 sound_match_pause.set_volume(config["sounds"]["volume"])
+
+# * Servers
+SERVER_PORT = 80
+rest = flask.Flask(__name__, static_folder=os.path.join(dirname, "./res/static"), template_folder=os.path.join(dirname, "./res/templates"))
+CORS(rest)
+socket = flask_socketio.SocketIO(rest, async_mode="threading")
+server_thread: threading.Thread = None
+
+# * Server routes
+@rest.route("/")
+def index_page():
+    return flask.render_template("index.html", version=version, build=build)
+
+@rest.route("/scoring")
+def scoring_page():
+    return flask.render_template("scoring.html", version=version, build=build)
+
+# * Socket events
+@socket.on("connect")
+def on_connect():
+    print("Referee board connected")
+
+@socket.on("disconnect")
+def on_disconnect():
+    print("Referee board disconnected")
+
+@socket.on('message')
+def handle_message(message):
+    print(f"Message received: {message}")
+    # Emit a response
+    socket.emit('response', f"Server received: {message}")
+
+@socket.on("add_goal")
+def add_goal(data):
+    if data["alliance"] == "red":
+        match.red_alliance_goal_add()
+    elif data["alliance"] == "blue":
+        match.blue_alliance_goal_add()
+
+@socket.on("sub_goal")
+def sub_goal(data):
+    if data["alliance"] == "red":
+        match.red_alliance_goal_sub()
+    elif data["alliance"] == "blue":
+        match.blue_alliance_goal_sub()
+
+@socket.on("add_foul")
+def add_foul(data):
+    if data["alliance"] == "red":
+        match.red_alliance_foul_add()
+    elif data["alliance"] == "blue":
+        match.blue_alliance_foul_add()
+
+@socket.on("sub_foul")
+def sub_foul(data):
+    if data["alliance"] == "red":
+        match.red_alliance_foul_sub()
+    elif data["alliance"] == "blue":
+        match.blue_alliance_foul_sub()
 
 # * Match Manager
 try:
@@ -89,49 +152,19 @@ main_window.attributes('-topmost', True)
 main_window.resizable(False, False)
 main_window.iconbitmap(os.path.join(dirname, "./res/images/APPICON.ico"))
 
-# * Launchpad integration
-try:
-    pyi_splash.update_text("Starting Launchpad Integration")
-except:
-    pass
-
-lp: launchpad_py.LaunchpadMk2 = None
-lp_wapper: launchpad_wrapper.LaunchpadWrapper = None
-try: 
-    lp = launchpad_py.LaunchpadMk2()
-    lp_wapper = launchpad_wrapper.LaunchpadWrapper(lp)
-    lp.Open()
-    lp.LedAllOn(0)
-
-    def launchpad_start():
-        lp.LedCtrlPulseXYByCode(8, 1, 46)
-        lp.LedCtrlXYByCode(*launchpad_constants.START_MATCH_PAD, 23)
-    launchpad_start()
-
-    def launchpad_loop():
-        lp_wapper.update()
-        main_window.after(100, launchpad_loop)
-    launchpad_loop()
-
-    @lp_wapper.on_button_press(*launchpad_constants.START_MATCH_PAD)
-    def launchpad_start_match():
-        match_start()
-except:
-    pass
-
-# * Overlay
+# ! Overlay
 try:
     pyi_splash.update_text("Starting overlay")
 except:
     pass
-overlay_window = PrepatecOverlay(main_window, os.path.join(dirname, "./res/images/overlay_prepatec.png"), os.path.join(dirname, "./res/images/APPICON.ico"))
+overlay_window = ITESMOverlay(main_window, os.path.join(dirname, "./res/images/overlay_itesm.png"), os.path.join(dirname, "./res/images/APPICON.ico"))
 
-# * Scores Screen
+# ! Scores Screen
 try:
     pyi_splash.update_text("Starting scores screen")
 except:
     pass
-scores_screen_window = PrepatecScoresScreen(main_window, os.path.join(dirname, "./res/images/scores_screen_prepatec.png"), os.path.join(dirname, "./res/images/APPICON.ico"))
+scores_screen_window = ITESMScoresScreen(main_window, os.path.join(dirname, "./res/images/scores_screen_itesm.png"), os.path.join(dirname, "./res/images/APPICON.ico"))
 
 # * Match select
 match_select_frame = tk.LabelFrame(main_window, text="Match Number", padx=5, pady=5)
@@ -213,13 +246,22 @@ except:
 def load_match():
     match_number = match_select_variable.get()
 
-    red_alliance_team_1_variable.set(matches.at[match_number - 1, "red_alliance_team_1"])
-    red_alliance_team_2_variable.set(matches.at[match_number - 1, "red_alliance_team_2"])
-    red_alliance_team_3_variable.set(matches.at[match_number - 1, "red_alliance_team_3"])
-    
-    blue_alliance_team_1_variable.set(matches.at[match_number - 1, "blue_alliance_team_1"])
-    blue_alliance_team_2_variable.set(matches.at[match_number - 1, "blue_alliance_team_2"])
-    blue_alliance_team_3_variable.set(matches.at[match_number - 1, "blue_alliance_team_3"])
+    if len(matches) >= match_number:
+        red_alliance_team_1_variable.set(matches.at[match_number - 1, "red_alliance_team_1"])
+        red_alliance_team_2_variable.set(matches.at[match_number - 1, "red_alliance_team_2"])
+        red_alliance_team_3_variable.set(matches.at[match_number - 1, "red_alliance_team_3"])
+        
+        blue_alliance_team_1_variable.set(matches.at[match_number - 1, "blue_alliance_team_1"])
+        blue_alliance_team_2_variable.set(matches.at[match_number - 1, "blue_alliance_team_2"])
+        blue_alliance_team_3_variable.set(matches.at[match_number - 1, "blue_alliance_team_3"])
+    else:
+        red_alliance_team_1_variable.set(0)
+        red_alliance_team_2_variable.set(0)
+        red_alliance_team_3_variable.set(0)
+        
+        blue_alliance_team_1_variable.set(0)
+        blue_alliance_team_2_variable.set(0)
+        blue_alliance_team_3_variable.set(0)
 
 match_select_variable.trace_add("write", lambda *args: load_match())
 load_match()
@@ -403,14 +445,13 @@ def update_screens():
     red_alliance_score_fouls.config(text=f"Fouls: {match.red_alliance_get_own_fouls()}")
 
     # Update Overlay
-    overlay_window.set_blue_alliance_teams(match.blue_alliance_team_1, match.blue_alliance_team_2, match.blue_alliance_team_3)
+    overlay_window.set_blue_alliance_teams(match.blue_alliance_team_1, match.blue_alliance_team_2, match .blue_alliance_team_3)
     overlay_window.set_red_alliance_teams(match.red_alliance_team_1, match.red_alliance_team_2, match.red_alliance_team_3)
 
     overlay_window.set_blue_alliance_goals(match.blue_alliance_get_total_score())
     overlay_window.set_red_alliance_goals(match.red_alliance_get_total_score())
 
     overlay_window.set_event_name(config["event"]["event_name"])
-    overlay_window.set_match_name(matches.at[match_select_variable.get() - 1, "match_type"] + " " + str(match_select_variable.get()))
 
     # Update Scores Screen
     scores_screen_window.set_blue_alliance_teams(match.blue_alliance_team_1, match.blue_alliance_team_2, match.blue_alliance_team_3)
@@ -426,7 +467,6 @@ def update_screens():
     scores_screen_window.set_red_alliance_total_score(match.red_alliance_get_total_score())
 
     scores_screen_window.set_event_name(config["event"]["event_name"])
-    scores_screen_window.set_match_name(matches.at[match_select_variable.get() - 1, "match_type"] + " " + str(match_select_variable.get()))
 
     # Update Match names
     match_number = match_select_variable.get()
@@ -438,14 +478,28 @@ def update_screens():
     overlay_window.set_match_name(match_type + " " + str(match_number))
     scores_screen_window.set_match_name(match_type + " " + str(match_number))
 
-    if lp is not None:
-        try:
-            if match.is_match_active():
-                lp.LedCtrlPulseXYByCode(*launchpad_constants.STATUS_PAD, 23)
-            else:
-                lp.LedCtrlXYByCode(*launchpad_constants.STATUS_PAD, 66)
-        except:
-            pass
+    socket.emit("update", {
+        "red_alliance_team_1": match.red_alliance_team_1,
+        "red_alliance_team_2": match.red_alliance_team_2,
+        "red_alliance_team_3": match.red_alliance_team_3,
+
+        "blue_alliance_team_1": match.blue_alliance_team_1,
+        "blue_alliance_team_2": match.blue_alliance_team_2,
+        "blue_alliance_team_3": match.blue_alliance_team_3,
+
+        "red_alliance_total_score": match.red_alliance_get_total_score(),
+        "red_alliance_goals": match.red_alliance_get_goals(),
+        "red_alliance_fouls": match.red_alliance_get_own_fouls(),
+
+        "blue_alliance_total_score": match.blue_alliance_get_total_score(),
+        "blue_alliance_goals": match.blue_alliance_get_goals(),
+        "blue_alliance_fouls": match.blue_alliance_get_own_fouls(),
+
+        "match_number": match_select_variable.get(),
+
+        "match_active": match.is_match_active(),
+        "match_locked": match.is_locked()
+    })
 
 try:
     pyi_splash.update_text("Updating screens")
@@ -468,6 +522,18 @@ def match_start():
 
     match.start_match_with_match_number(match_select_variable.get())
 
+    socket.emit("match_start", {
+        "red_alliance_team_1": match.red_alliance_team_1,
+        "red_alliance_team_2": match.red_alliance_team_2,
+        "red_alliance_team_3": match.red_alliance_team_3,
+
+        "blue_alliance_team_1": match.blue_alliance_team_1,
+        "blue_alliance_team_2": match.blue_alliance_team_2,
+        "blue_alliance_team_3": match.blue_alliance_team_3,
+
+        "match_number": match_select_variable.get()
+    })
+
     global teleop_sound_callback_id, endgame_sound_callback_id, end_match_sound_callback_id
     teleop_sound_callback_id = main_window.after((config["timing"]["auto_time_seconds"]) * 1000, lambda: sound_teleop_start.play())
     endgame_sound_callback_id = main_window.after((config["timing"]["auto_time_seconds"] + config["timing"]["teleop_time_seconds"] - config["timing"]["endgame_time_seconds"]) * 1000, lambda: sound_endgame_start.play())
@@ -480,21 +546,11 @@ def match_start():
             elapsed_time = time.time() - match_start_time
             match_time = total_match_time - elapsed_time
 
-            if lp is not None:
-                match_time_percentage = match_time / total_match_time
-                try:
-                    for i in range(8):
-                        if i < match_time_percentage * 8:
-                            lp.LedCtrlXYByCode(i, 8, 23)
-                        else:
-                            lp.LedCtrlXYByCode(i, 8, 0)
-                except:
-                    pass
-
             # Update timers
             match_time_str = time.strftime("%M:%S", time.gmtime(match_time))
             match_control_timer_label.config(text=match_time_str)
             overlay_window.set_timer_text(match_time_str)
+            socket.emit("match_time", {"match_time": match_time_str})
 
             # Check if match is over
             if match_time <= 0:
@@ -502,6 +558,7 @@ def match_start():
                 sound_match_end.play()
                 match_control_timer_label.config(text="00:00")
                 overlay_window.set_timer_text("00:00")
+                socket.emit("match_time", {"match_time": "00:00"})
                 break
 
             time.sleep(0.25)
@@ -521,6 +578,16 @@ def end_match():
 
     global time_update_thread
     time_update_thread.join()
+    
+    socket.emit("match_end", {
+        "red_alliance_goals": match.red_alliance_get_goals(),
+        "red_alliance_fouls": match.red_alliance_get_own_fouls(),
+
+        "blue_alliance_goals": match.blue_alliance_get_goals(),
+        "blue_alliance_fouls": match.blue_alliance_get_own_fouls(),
+
+        "match_number": match_select_variable.get()
+    })
 
     match_control_timer_label.config(text="00:00")
     overlay_window.set_timer_text("00:00")
@@ -529,14 +596,19 @@ def match_pause():
     if match.is_match_active():
         end_match()
         sound_match_pause.play()
+        socket.emit("match_pause", {})
 
 def match_stop():
     if match.is_match_active():
         end_match()
         sound_match_end.play()
+        socket.emit("match_stop", {})
 
 pause_match_button.config(command=match_pause)
 end_match_button.config(command=match_stop)
+
+def start_servers():
+    socket.run(rest, host="0.0.0.0", port=SERVER_PORT)
 
 if __name__ == "__main__":
     try:
@@ -545,7 +617,13 @@ if __name__ == "__main__":
         pyi_splash.close()
     except:
         pass
+    if config["fms"]["remote_control"]:
+        server_thread = threading.Thread(target=start_servers, daemon=True)
+        server_thread.start()
     main_window.mainloop()
-    if lp is not None:
-        lp.LedAllOn(0)
-        lp.Close()
+    try:
+        socket.stop()
+    except:
+        pass
+    if server_thread is not None:
+        server_thread.join()
